@@ -172,7 +172,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "voidcraft-world-bridge", git = "https://github.com/voidcraft-world/voidcraft-world-bridge?rev=127e2ebadcb7d0829e27f9b9d5c9becc90cdcd1d" }]
+requires-dist = [{ name = "voidcraft-world-bridge", git = "https://github.com/voidcraft-world/voidcraft-world-bridge?rev=a12f51599a515a6460307fbf4e45df33d0a76eb3" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=7.4,<10" }]
@@ -180,4 +180,4 @@ dev = [{ name = "pytest", specifier = ">=7.4,<10" }]
 [[package]]
 name = "voidcraft-world-bridge"
 version = "0.1.1"
-source = { git = "https://github.com/voidcraft-world/voidcraft-world-bridge?rev=127e2ebadcb7d0829e27f9b9d5c9becc90cdcd1d#127e2ebadcb7d0829e27f9b9d5c9becc90cdcd1d" }
+source = { git = "https://github.com/voidcraft-world/voidcraft-world-bridge?rev=a12f51599a515a6460307fbf4e45df33d0a76eb3#a12f51599a515a6460307fbf4e45df33d0a76eb3" }

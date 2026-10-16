@@ -19,9 +19,8 @@ DEFAULT_KEEP = 25
 
 SUFFIX = ".json"
 
-#: Epoch-millisecond prefix, zero-padded to a fixed width so a plain lexical sort
-#: of the filenames IS chronological order. 13 digits covers every date until the
-#: year 2286; the pad keeps that true if the clock is ever set to something absurd.
+#: Millisecond prefix, advanced when necessary to keep writes ordered even within
+#: one clock tick or after a clock adjustment. stored_at keeps the real wall time.
 STAMP_WIDTH = 13
 CAPTURE_NAME = re.compile(r"[0-9]{13,}-[a-zA-Z0-9_-]{1,64}\.json")
 MAX_CAPTURE_BYTES = 4096
@@ -88,37 +87,35 @@ class CaptureStore:
             raise CaptureStoreError("capture must carry an integer 'version'")
 
         try:
-            text = json.dumps(payload, allow_nan=False, separators=(",", ":"))
+            text = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
             if self._redact is not None:
                 payload = self._redact(json.loads(text))
                 if not isinstance(payload, dict) or type(payload.get("version")) is not int:
                     raise CaptureStoreError("redaction must return a versioned object")
-                text = json.dumps(payload, allow_nan=False, separators=(",", ":"))
+                text = json.dumps(payload, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
             if len(text.encode("utf-8")) > self._max_bytes:
                 raise CaptureStoreError("capture exceeds byte budget")
             payload = json.loads(text)
         except (TypeError, ValueError, RecursionError) as error:
             raise CaptureStoreError("capture must be finite JSON within the byte budget") from error
 
-        stamp_ms = int(self._now_fn() * 1000)
-        capture_id = self._id_fn()
-        name = capture_filename(stamp_ms, capture_id)
-        if CAPTURE_NAME.fullmatch(name) is None:
-            raise CaptureStoreError("invalid generated capture id")
-
-        # The stored envelope adds only what the SERVER knows. The payload is
-        # nested rather than merged so a future field in either half can never
-        # silently shadow the other.
-        record = {
-            "version": 1,
-            "id": Path(name).stem,
-            "stored_at": stamp_ms,
-            "kind": payload["kind"][:128] if isinstance(payload.get("kind"), str) else None,
-            "capture": payload,
-        }
-        text = json.dumps(record, separators=(",", ":"))
-
         with self._lock:
+            stamp_ms = int(self._now_fn() * 1000)
+            files = self._files()
+            previous = max((int(p.name.split("-", 1)[0]) for p in files), default=-1)
+            name = capture_filename(max(stamp_ms, previous + 1), self._id_fn())
+            if CAPTURE_NAME.fullmatch(name) is None:
+                raise CaptureStoreError("invalid generated capture id")
+
+            # Keep application fields nested so they cannot shadow the envelope.
+            record = {
+                "version": 1,
+                "id": Path(name).stem,
+                "stored_at": stamp_ms,
+                "kind": payload["kind"][:128] if isinstance(payload.get("kind"), str) else None,
+                "capture": payload,
+            }
+            text = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
             atomic_write(self._directory / name, text)
             pruned = self._prune_locked()
 
@@ -159,7 +156,7 @@ class CaptureStore:
             if not isinstance(record, dict) or not isinstance(record.get("capture"), dict):
                 return None
             return record
-        except (OSError, ValueError):
+        except (OSError, ValueError, RecursionError):
             # Tolerant load, for independent readers: a corrupt file is
             # skipped rather than allowed to break the listing it appears in.
             return None
@@ -180,12 +177,17 @@ class CaptureStore:
             record = self._read(path)
             if record is None:
                 continue
+            try:
+                size = path.stat().st_size
+            except OSError:
+                # A concurrent save may have pruned this record after the read.
+                continue
             rows.append(
                 {
                     "id": record.get("id"),
                     "stored_at": record.get("stored_at"),
                     "kind": record.get("kind"),
-                    "bytes": path.stat().st_size if path.exists() else None,
+                    "bytes": size,
                 }
             )
             if len(rows) >= limit:

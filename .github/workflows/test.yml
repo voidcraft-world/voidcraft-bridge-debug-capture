@@ -14,3 +14,10 @@ jobs:
       - run: uv sync --locked --python ${{ matrix.python }}
       - run: uv run pytest tests/test_store.py tests/test_plugin.py tests/test_safety.py
       - run: node --test tests/test_capture.mjs
+      - name: Install using standard package metadata
+        run: |
+          capture_install="$RUNNER_TEMP/capture-install"
+          uv venv --python '${{ matrix.python }}' "$capture_install"
+          uv pip install --no-sources --python "$capture_install/bin/python" .
+          cd "$RUNNER_TEMP"
+          "$capture_install/bin/python" -c 'from voidcraft_bridge_debug_capture.plugin import DebugCapturePlugin; assert DebugCapturePlugin().routes()'

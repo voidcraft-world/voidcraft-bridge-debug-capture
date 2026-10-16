@@ -15,7 +15,8 @@ uv sync --locked
 VOIDCRAFT_BRIDGE_PLUGINS="$PWD" uv run voidcraft-world-bridge
 ```
 
-The lock pins the reviewed SDK commit until its next package release. The plugin mounts at
+The package metadata and lock pin the reviewed SDK commit until its next package release, including
+when installed with pip. The plugin mounts at
 `http://127.0.0.1:7682/plugin/debug-capture/`. If another bridge owns that port, configure this
 plugin on that bridge instead, or use a spare port and update the browser helper's endpoint.
 
@@ -71,6 +72,9 @@ For server-side redaction, construct `CaptureStore(redact=your_function)` and su
 The store keeps 25 captures in `~/.local/state/voidcraft-world-bridge/debug-capture/`.
 Set `VOIDCRAFT_CAPTURE_DIR` to use another directory. Each capture is limited to 4096 bytes
 before its storage envelope. Writes are atomic; generated files have owner-only permissions.
+The byte budget counts UTF-8 JSON, matching the browser helper. One bridge process writes each
+directory. Capture IDs preserve write order within a clock tick and after clock adjustments;
+`stored_at` keeps the actual wall-clock time.
 Recognized capture filenames are the only files pruned; unrelated JSON and symlinks are ignored.
 Retention is count-based, not time-based. Local programs running as you can read the files.
 

@@ -64,6 +64,36 @@ def test_latest_is_the_newest(tmp_path):
     assert store.latest()["capture"]["note"] == "second"
 
 
+def test_same_tick_captures_remain_ordered_and_do_not_evict_the_newest(tmp_path):
+    ids = iter(["zzz", "aaa"])
+    store = CaptureStore(tmp_path, keep=1, now_fn=lambda: 1_700_000_000, id_fn=lambda: next(ids))
+    first = store.save(digest(note="first"))
+    second = store.save(digest(note="second"))
+    assert store.latest()["capture"]["note"] == "second"
+    assert store.get(second["id"]) is not None
+    assert store.get(first["id"]) is None
+
+
+def test_reopening_store_after_clock_moves_back_preserves_newest(tmp_path):
+    first = CaptureStore(tmp_path, now_fn=lambda: 1_700_000_010, id_fn=lambda: "same")
+    first.save(digest(note="first"))
+    reopened = CaptureStore(tmp_path, now_fn=lambda: 1_700_000_000, id_fn=lambda: "same")
+    saved = reopened.save(digest(note="second"))
+    assert reopened.latest()["id"] == saved["id"]
+    assert [row["id"] for row in reopened.listing()][0] == saved["id"]
+    assert reopened.state()["newest"] == saved["id"]
+    assert saved["stored_at"] == 1_700_000_000_000
+
+
+def test_unicode_budget_matches_browser_utf8_serialization(tmp_path):
+    payload = digest(note="😀" * 900)
+    browser_body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    assert len(browser_body) < 4096
+    store = make_store(tmp_path)
+    saved = store.save(payload)
+    assert store.get(saved["id"])["capture"] == payload
+
+
 def test_latest_is_none_on_an_empty_or_missing_directory(tmp_path):
     assert make_store(tmp_path).latest() is None
     assert CaptureStore(tmp_path / "does" / "not" / "exist").latest() is None

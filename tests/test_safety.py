@@ -42,3 +42,16 @@ def test_malformed_envelopes_do_not_break_latest(tmp_path):
     store.save({"version": 1})
     (tmp_path / "9999999999999-bad.json").write_text("[]")
     assert store.latest()["capture"] == {"version": 1}
+
+
+def test_overdeep_json_is_skipped(tmp_path):
+    store = CaptureStore(tmp_path)
+    store.save({"version": 1})
+    (tmp_path / "9999999999999-deep.json").write_text("[" * 1500 + "0" + "]" * 1500)
+    assert store.latest()["capture"] == {"version": 1}
+
+
+def test_lone_surrogate_is_refused_before_writing(tmp_path):
+    with pytest.raises(CaptureStoreError):
+        CaptureStore(tmp_path).save({"version": 1, "text": "\ud800"})
+    assert not list(tmp_path.iterdir())
