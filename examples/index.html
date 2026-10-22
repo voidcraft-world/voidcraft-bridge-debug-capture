@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debug capture example</title>
+<style>
+body { font: 18px system-ui; max-width: 44rem; margin: 4rem auto; padding: 1rem; background: #111820; color: #e2e9ef; }
+button { font: inherit; padding: .6rem 1rem; margin-right: .5rem; cursor: pointer; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+<h1>Share live state with your coding agent</h1>
+<p>This example sends the counter value and selected tab when you press Capture. It collects no other page data.</p>
+<p>Counter: <output id="count">0</output></p>
+<button id="increment">Increment</button><button id="capture">Capture state</button>
+<pre id="result" role="status">No capture sent.</pre>
+<script type="module">
+import { send_capture } from '../browser/capture.mjs';
+let counter = 0;
+document.querySelector('#increment').onclick = () => {
+  document.querySelector('#count').textContent = ++counter;
+};
+document.querySelector('#capture').onclick = async () => {
+  const output = document.querySelector('#result');
+  output.textContent = 'Saving…';
+  try {
+    const result = await send_capture({ version: 1, kind: 'example', state: { counter, tab: 'overview' } });
+    output.textContent = `Saved ${result.id}\nYour agent can now read /plugin/debug-capture/latest.`;
+  } catch (error) {
+    output.textContent = `Could not capture: ${error.message}. Check that the bridge and plugin are running.`;
+  }
+};
+</script>
+</html>

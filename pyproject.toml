@@ -1,0 +1,22 @@
+[project]
+name = "voidcraft-bridge-debug-capture"
+version = "0.1.0"
+description = "Let a local coding agent inspect application-selected browser state"
+requires-python = ">=3.10,<4"
+readme = "README.md"
+license = "MIT"
+# A standard dependency pin also works for pip and downstream consumers.
+# Replace it with a version requirement after the SDK package release.
+dependencies = [
+    "voidcraft-world-bridge @ git+https://github.com/voidcraft-world/voidcraft-world-bridge@a12f51599a515a6460307fbf4e45df33d0a76eb3",
+]
+
+[dependency-groups]
+dev = ["pytest>=7.4,<10"]
+
+[tool.uv.build-backend]
+module-root = ""
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.13"]
+build-backend = "uv_build"
