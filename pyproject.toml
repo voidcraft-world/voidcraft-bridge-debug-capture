@@ -5,6 +5,8 @@ description = "Let a local coding agent inspect application-selected browser sta
 requires-python = ">=3.10,<4"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Uladzislau Tarsunou" }]
 # A standard dependency pin also works for pip and downstream consumers.
 # Replace it with a version requirement after the SDK package release.
 dependencies = [
